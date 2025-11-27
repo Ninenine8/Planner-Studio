@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Sticker } from '../types';
-import { MousePointer2, Scissors, Check, Trash2, ArrowRight } from 'lucide-react';
+import { MousePointer2, Scissors, Check, Trash2, ArrowRight, Image as ImageIcon } from 'lucide-react';
 
 interface StickerExtractorProps {
   imageSrc: string;
@@ -112,16 +112,36 @@ const StickerExtractor: React.FC<StickerExtractorProps> = ({ imageSrc, onDone, o
     }
   };
 
+  const useFullImage = () => {
+    const img = imgRef.current;
+    if (!img) return;
+    
+    setStickers(prev => [...prev, {
+        id: Date.now().toString() + Math.random(),
+        url: imageSrc,
+        width: img.width, // Visual width, will be scaled in planner anyway
+        height: img.height
+    }]);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-slate-100">
-      <div className="bg-white p-4 shadow-sm flex justify-between items-center z-10">
+      <div className="bg-white p-4 shadow-sm flex flex-col md:flex-row justify-between items-center z-10 gap-3">
         <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-slate-800">Step 2: Create Stickers</h2>
-            <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full">Draw boxes around your art</span>
+            <span className="text-xs md:text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full whitespace-nowrap">Draw boxes to crop</span>
         </div>
-        <div className="flex gap-3">
-          <button onClick={onBack} className="text-slate-600 hover:text-slate-900 font-medium">
-            Cancel
+        
+        <div className="flex flex-wrap gap-2 justify-center">
+            <button 
+                onClick={useFullImage}
+                className="flex items-center gap-1 px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium text-sm transition-colors"
+            >
+                <ImageIcon size={16} /> Use Full Image
+            </button>
+            <div className="w-px h-8 bg-slate-300 mx-1 hidden md:block"></div>
+          <button onClick={onBack} className="text-slate-600 hover:text-slate-900 font-medium px-2">
+            Back
           </button>
           <button 
             onClick={() => onDone(stickers)} 
@@ -139,12 +159,12 @@ const StickerExtractor: React.FC<StickerExtractorProps> = ({ imageSrc, onDone, o
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Workspace */}
-        <div className="flex-1 bg-slate-200 p-8 overflow-auto flex justify-center">
+        <div className="flex-1 bg-slate-200 p-4 md:p-8 overflow-auto flex justify-center">
           <div 
             ref={containerRef}
-            className="relative shadow-2xl bg-white select-none cursor-crosshair inline-block"
+            className="relative shadow-2xl bg-white select-none cursor-crosshair inline-block max-w-full"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -154,7 +174,7 @@ const StickerExtractor: React.FC<StickerExtractorProps> = ({ imageSrc, onDone, o
               ref={imgRef}
               src={imageSrc} 
               alt="Uploaded Art" 
-              className="max-w-[800px] max-h-[80vh] object-contain pointer-events-none"
+              className="max-w-full md:max-w-[800px] max-h-[50vh] md:max-h-[80vh] object-contain pointer-events-none"
               draggable={false}
             />
             
@@ -174,26 +194,26 @@ const StickerExtractor: React.FC<StickerExtractorProps> = ({ imageSrc, onDone, o
         </div>
 
         {/* Sidebar */}
-        <div className="w-80 bg-white border-l border-slate-200 p-4 overflow-y-auto flex flex-col gap-4">
+        <div className="w-full md:w-80 bg-white border-t md:border-t-0 md:border-l border-slate-200 p-4 overflow-y-auto flex flex-col gap-4 h-48 md:h-auto shrink-0">
           <h3 className="font-bold text-slate-700 flex items-center gap-2">
             <Scissors size={18} /> Extracted Stickers ({stickers.length})
           </h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-4 md:grid-cols-2 gap-3">
             {stickers.map((s, idx) => (
               <div key={s.id} className="relative group border rounded-lg p-2 bg-slate-50 hover:shadow-md transition-all">
-                <img src={s.url} alt={`Sticker ${idx}`} className="w-full h-24 object-contain" />
+                <img src={s.url} alt={`Sticker ${idx}`} className="w-full h-16 md:h-24 object-contain" />
                 <button 
                   onClick={() => setStickers(prev => prev.filter(st => st.id !== s.id))}
-                  className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full md:opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 size={12} />
                 </button>
               </div>
             ))}
             {stickers.length === 0 && (
-              <div className="col-span-2 text-center py-10 text-slate-400 border-2 border-dashed border-slate-200 rounded-lg">
+              <div className="col-span-4 md:col-span-2 text-center py-4 md:py-10 text-slate-400 border-2 border-dashed border-slate-200 rounded-lg">
                 <MousePointer2 className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Draw a box on your image to create a sticker!</p>
+                <p className="text-xs md:text-sm">Draw a box on your image to create a sticker!</p>
               </div>
             )}
           </div>

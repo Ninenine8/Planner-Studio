@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Image as ImageIcon, Printer, Download, Sparkles, ChevronLeft, ChevronRight, Layout, RotateCcw, Plus, Palette, Shapes, PaintBucket, Undo2, Redo2, Type, ToggleLeft, ToggleRight, Wand2, PenTool, Globe, Share2, Save, X, Layers } from 'lucide-react';
+import { Upload, Image as ImageIcon, Printer, Download, Sparkles, ChevronLeft, ChevronRight, Layout, RotateCcw, Plus, Palette, Shapes, PaintBucket, Undo2, Redo2, Type, ToggleLeft, ToggleRight, Wand2, PenTool, Globe, Share2, Save, X, Layers, Smartphone } from 'lucide-react';
 import StickerExtractor from './components/StickerExtractor';
 import PrintableMonth from './components/PrintableMonth';
 import { analyzeDrawings, generatePlannerBackground } from './services/geminiService';
@@ -65,9 +65,18 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'stickers' | 'style'>('stickers');
   const [isGeneratingBackground, setIsGeneratingBackground] = useState(false);
   const [isProcessingDownload, setIsProcessingDownload] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Derived State
   const currentMonthHolidays = getHolidaysForMonth(plannerData.country, currentMonthIndex);
+
+  // --- Effects ---
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1024); // Treat anything under 1024px as needing responsive adjustments
+    handleResize(); // Init
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // --- Undo / Redo Logic ---
   const saveToHistory = (
@@ -103,6 +112,21 @@ const App: React.FC = () => {
 
   // --- Handlers ---
 
+  const createStickersFromImages = (images: string[]): Promise<Sticker[]> => {
+    return Promise.all(images.map(src => new Promise<Sticker>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            resolve({
+                id: Date.now().toString() + Math.random(),
+                url: src,
+                width: img.naturalWidth,
+                height: img.naturalHeight
+            });
+        };
+        img.src = src;
+    })));
+  };
+
   // File Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -116,13 +140,20 @@ const App: React.FC = () => {
           }));
       });
 
-      Promise.all(fileReaders).then(images => {
-          // If in plan mode, start adding flow immediately
+      Promise.all(fileReaders).then(async (images) => {
+          // If in plan mode
           if (step === 'plan') {
-              setProcessingImages(images);
-              setCurrentImageIndex(0);
-              setIsAddingMore(true);
-              setStep('extract');
+              if (isMobile) {
+                  // On mobile, skip extraction when adding more pics
+                  const newStickers = await createStickersFromImages(images);
+                  setStickers(prev => [...prev, ...newStickers]);
+                  alert(`Added ${newStickers.length} new stickers!`);
+              } else {
+                  setProcessingImages(images);
+                  setCurrentImageIndex(0);
+                  setIsAddingMore(true);
+                  setStep('extract');
+              }
           } else {
               // In upload mode, append to list
               setProcessingImages(prev => [...prev, ...images]);
@@ -140,9 +171,12 @@ const App: React.FC = () => {
   const startAnalysis = async () => {
     if (processingImages.length === 0) return;
     setIsAnalyzing(true);
-    // Move to next step immediately for UX
-    setStep('extract'); 
-    setCurrentImageIndex(0);
+    
+    // UI Feedback immediately
+    if (!isMobile) {
+       setStep('extract'); 
+       setCurrentImageIndex(0);
+    }
     
     try {
       // Analyze the first image for mood/palette
@@ -154,8 +188,22 @@ const App: React.FC = () => {
           country: prev.country // Preserve country
       }));
       setOriginalAiPalette(data.palette);
+
+      // On mobile, skip extraction and go straight to plan with full images
+      if (isMobile) {
+          const newStickers = await createStickersFromImages(processingImages);
+          setStickers(prev => [...prev, ...newStickers]);
+          setStep('plan');
+      }
+
     } catch (e) {
       console.error(e);
+      // Fallback if analysis fails, still proceed
+      if (isMobile) {
+          const newStickers = await createStickersFromImages(processingImages);
+          setStickers(prev => [...prev, ...newStickers]);
+          setStep('plan');
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -172,8 +220,6 @@ const App: React.FC = () => {
         setStep('plan');
         setIsAddingMore(false);
         setCurrentImageIndex(0);
-        // We keep processingImages in state so we don't lose them if we go back to 'upload' later, 
-        // but for 'Adding More' flow, we typically replace them.
     }
   };
 
@@ -494,6 +540,11 @@ const App: React.FC = () => {
                 >
                    {isAnalyzing ? "Analyzing Art..." : `Start with ${processingImages.length} Image${processingImages.length > 1 ? 's' : ''}`} <ChevronRight />
                 </button>
+                {isMobile && (
+                     <p className="text-xs text-indigo-500 font-medium animate-pulse">
+                        <Smartphone size={12} className="inline mr-1"/> Mobile mode: Auto-converting images to stickers
+                     </p>
+                )}
               </div>
             )}
           </div>
@@ -521,68 +572,68 @@ const App: React.FC = () => {
   return (
     <>
         {/* === SCREEN VIEW === */}
-        <div className="min-h-screen bg-slate-100 flex flex-col no-print">
+        <div className="min-h-screen bg-slate-100 flex flex-col no-print h-screen overflow-hidden">
             {/* Top Bar (No Print) */}
-            <header className="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center shadow-sm sticky top-0 z-50">
-                <div className="flex items-center gap-3">
-                <div className="bg-indigo-600 text-white p-2 rounded-lg">
+            <header className="bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center shadow-sm z-50 shrink-0">
+                <div className="flex items-center gap-2">
+                <div className="bg-indigo-600 text-white p-2 rounded-lg shrink-0">
                     <Layout size={20} />
                 </div>
-                <h1 className="font-bold text-slate-800 text-lg hidden sm:block">Planner Studio</h1>
+                <h1 className="font-bold text-slate-800 text-lg hidden md:block">Planner Studio</h1>
                 
                 {/* Undo/Redo Controls */}
-                <div className="flex items-center gap-1 ml-4 border-l pl-4 border-slate-200">
+                <div className="flex items-center gap-1 ml-2 md:ml-4 border-l pl-2 md:pl-4 border-slate-200">
                     <button 
                     type="button"
                     onClick={handleUndo}
                     disabled={historyIndex <= 0}
-                    className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent"
+                    className="p-1.5 md:p-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent"
                     title="Undo"
                     >
-                    <Undo2 size={20} />
+                    <Undo2 size={18} />
                     </button>
                     <button 
                     type="button"
                     onClick={handleRedo}
                     disabled={historyIndex >= history.length - 1}
-                    className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent"
+                    className="p-1.5 md:p-2 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent"
                     title="Redo"
                     >
-                    <Redo2 size={20} />
+                    <Redo2 size={18} />
                     </button>
                 </div>
                 </div>
 
-                <div className="flex items-center gap-4 bg-slate-100 rounded-full px-2 py-1">
+                <div className="flex items-center gap-2 md:gap-4 bg-slate-100 rounded-full px-2 py-1">
                 <button 
                     type="button"
                     onClick={() => setCurrentMonthIndex(prev => Math.max(0, prev - 1))}
                     disabled={currentMonthIndex === 0}
-                    className="p-2 hover:bg-white rounded-full transition-colors disabled:opacity-30"
+                    className="p-1.5 md:p-2 hover:bg-white rounded-full transition-colors disabled:opacity-30"
                 >
-                    <ChevronLeft size={20} />
+                    <ChevronLeft size={18} />
                 </button>
-                <span className="font-bold w-32 text-center text-slate-700 select-none">
+                <span className="font-bold w-24 md:w-32 text-center text-slate-700 select-none text-sm md:text-base truncate">
                     {MONTHS_2026[currentMonthIndex].name}
                 </span>
                 <button 
                     type="button"
                     onClick={() => setCurrentMonthIndex(prev => Math.min(11, prev + 1))}
                     disabled={currentMonthIndex === 11}
-                    className="p-2 hover:bg-white rounded-full transition-colors disabled:opacity-30"
+                    className="p-1.5 md:p-2 hover:bg-white rounded-full transition-colors disabled:opacity-30"
                 >
-                    <ChevronRight size={20} />
+                    <ChevronRight size={18} />
                 </button>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-1 md:gap-2">
                 <button 
                     type="button"
                     onClick={handlePrint}
                     className="flex items-center gap-2 bg-slate-100 text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-200 transition-colors"
                     title="Print"
                     >
-                    <Printer size={18} /> <span className="hidden lg:inline">Print</span>
+                    <Printer size={18} /> <span className="hidden xl:inline">Print</span>
                 </button>
                 <button 
                     type="button"
@@ -592,13 +643,13 @@ const App: React.FC = () => {
                     title="Download Image"
                 >
                     {isProcessingDownload ? <Sparkles size={18} className="animate-spin" /> : <Download size={18} />}
-                    <span className="hidden lg:inline">Save Img</span>
+                    <span className="hidden xl:inline">Save</span>
                 </button>
                 <button 
                     type="button"
                     onClick={handleShare}
                     disabled={isProcessingDownload}
-                    className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                    className="flex items-center gap-2 bg-indigo-600 text-white px-3 md:px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
                     title="Share / Forward"
                 >
                     <Share2 size={18} /> <span className="hidden sm:inline">Forward</span>
@@ -606,35 +657,51 @@ const App: React.FC = () => {
                 </div>
             </header>
 
-            <div className="flex flex-1 overflow-hidden relative">
+            <div className={`flex flex-1 overflow-hidden relative ${isMobile ? 'flex-col' : 'flex-row'}`}>
                 {/* Main Canvas Area */}
-                <main className="flex-1 overflow-auto p-4 md:p-8 flex justify-center bg-slate-100">
-                    <div className="w-[297mm] h-[210mm] shadow-2xl bg-white transition-colors duration-500">
-                    <PrintableMonth 
-                        monthIndex={currentMonthIndex}
-                        monthData={MONTHS_2026[currentMonthIndex]}
-                        plannerData={plannerData}
-                        events={events[currentMonthIndex.toString()] || {}}
-                        stickers={stickers}
-                        monthlyNote={monthlyNotes[currentMonthIndex]}
-                        enableDailyNotes={enableDailyNotes}
-                        onUpdateMonthlyNote={handleMonthlyNoteUpdate}
-                        onCommitMonthlyNote={handleMonthlyNoteCommit}
-                        onDayClick={handleDayClick}
-                        selectedStickerId={selectedStickerId}
-                        onUpdateSticker={handleStickerUpdate}
-                        onDeleteSticker={handleStickerDelete}
-                        onUpdateNote={handleNoteUpdate}
-                        onCommitNote={handleNoteCommit}
-                        holidays={currentMonthHolidays}
-                    />
+                <main className="flex-1 overflow-auto p-4 md:p-8 flex justify-center bg-slate-200/50">
+                     {/* 
+                       Scaled Container for Mobile:
+                       A4 is ~210mm wide. Screen widths vary. 
+                       We apply a transform scale to fit the A4 page into the viewport.
+                     */}
+                    <div 
+                      className="origin-top transition-transform duration-300"
+                      style={{ 
+                        transform: isMobile 
+                            ? `scale(${Math.min(1, (window.innerWidth - 32) / 1122)})` // 1122px is approx width of 297mm @ 96dpi
+                            : 'scale(1)',
+                        // On mobile we might want portrait mode scaling if user rotates, but let's stick to width fit
+                        marginBottom: isMobile ? '-50%' : '0' // Negative margin to reduce whitespace from scaling down
+                      }}
+                    >
+                        <div className="w-[297mm] h-[210mm] shadow-2xl bg-white transition-colors duration-500">
+                        <PrintableMonth 
+                            monthIndex={currentMonthIndex}
+                            monthData={MONTHS_2026[currentMonthIndex]}
+                            plannerData={plannerData}
+                            events={events[currentMonthIndex.toString()] || {}}
+                            stickers={stickers}
+                            monthlyNote={monthlyNotes[currentMonthIndex]}
+                            enableDailyNotes={enableDailyNotes}
+                            onUpdateMonthlyNote={handleMonthlyNoteUpdate}
+                            onCommitMonthlyNote={handleMonthlyNoteCommit}
+                            onDayClick={handleDayClick}
+                            selectedStickerId={selectedStickerId}
+                            onUpdateSticker={handleStickerUpdate}
+                            onDeleteSticker={handleStickerDelete}
+                            onUpdateNote={handleNoteUpdate}
+                            onCommitNote={handleNoteCommit}
+                            holidays={currentMonthHolidays}
+                        />
+                        </div>
                     </div>
                 </main>
 
                 {/* Sidebar */}
-                <aside className="w-80 bg-white border-l border-slate-200 flex flex-col z-40 shadow-lg">
+                <aside className={`bg-white border-l border-slate-200 flex flex-col z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] md:shadow-lg ${isMobile ? 'w-full h-1/3 min-h-[250px]' : 'w-80 h-full border-l'}`}>
                 {/* Sidebar Tabs */}
-                <div className="flex border-b border-slate-200">
+                <div className="flex border-b border-slate-200 shrink-0">
                     <button 
                     type="button"
                     onClick={() => setActiveTab('stickers')}
@@ -647,31 +714,33 @@ const App: React.FC = () => {
                     onClick={() => setActiveTab('style')}
                     className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'style' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50' : 'text-slate-500 hover:bg-slate-50'}`}
                     >
-                    <Palette size={16} /> Style & Mood
+                    <Palette size={16} /> Style
                     </button>
                 </div>
 
                 {/* Tab Content: Stickers */}
                 {activeTab === 'stickers' && (
                     <>
-                    <div className="p-4 border-b space-y-3">
-                        <div>
-                            <h3 className="font-bold text-slate-800">Your Collection</h3>
-                            <p className="text-xs text-slate-500">Select a sticker to place it.</p>
+                    <div className="p-3 md:p-4 border-b space-y-3 shrink-0">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h3 className="font-bold text-slate-800 text-sm md:text-base">Your Collection</h3>
+                                <p className="text-xs text-slate-500">Select to place.</p>
+                            </div>
+                            <label className="flex items-center justify-center gap-1 bg-indigo-600 text-white px-3 py-1.5 rounded-lg cursor-pointer hover:bg-indigo-700 shadow-md transition-all text-xs md:text-sm font-bold">
+                                <Plus size={14} /> Add {isMobile ? "Photos" : "Drawings"}
+                                <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
+                            </label>
                         </div>
-                        <label className="flex items-center justify-center gap-2 w-full bg-indigo-600 text-white py-2 rounded-lg cursor-pointer hover:bg-indigo-700 shadow-md transition-all text-sm font-bold">
-                            <Plus size={16} /> Add More Drawings
-                            <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
-                        </label>
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 auto-rows-max bg-slate-50">
+                    <div className="flex-1 overflow-y-auto p-3 md:p-4 grid grid-cols-3 md:grid-cols-2 gap-2 md:gap-3 auto-rows-max bg-slate-50">
                         {stickers.map((s) => (
                             <button
                             type="button"
                             key={s.id}
                             onClick={() => setSelectedStickerId(selectedStickerId === s.id ? null : s.id)}
-                            className={`relative border-2 rounded-xl p-2 h-24 flex items-center justify-center transition-all bg-white shadow-sm ${
+                            className={`relative border-2 rounded-xl p-2 h-20 md:h-24 flex items-center justify-center transition-all bg-white shadow-sm ${
                                 selectedStickerId === s.id 
                                 ? 'border-indigo-600 ring-2 ring-indigo-200' 
                                 : 'border-transparent hover:border-slate-300'
@@ -684,7 +753,7 @@ const App: React.FC = () => {
                             </button>
                         ))}
                         {stickers.length === 0 && (
-                            <div className="col-span-2 text-center text-slate-400 py-8 text-sm border-2 border-dashed rounded-xl">
+                            <div className="col-span-3 md:col-span-2 text-center text-slate-400 py-8 text-sm border-2 border-dashed rounded-xl">
                                 No stickers yet.
                             </div>
                         )}
@@ -694,10 +763,10 @@ const App: React.FC = () => {
 
                 {/* Tab Content: Style */}
                 {activeTab === 'style' && (
-                    <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 md:space-y-8 bg-slate-50">
                         {/* Mood Settings */}
                         <div>
-                        <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <h4 className="font-bold text-slate-800 mb-2 md:mb-3 flex items-center gap-2 text-sm md:text-base">
                             <Sparkles size={16} className="text-indigo-500"/> Current Mood
                         </h4>
                         <input 
@@ -711,18 +780,17 @@ const App: React.FC = () => {
 
                         {/* Typography Settings */}
                         <div>
-                        <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <h4 className="font-bold text-slate-800 mb-2 md:mb-3 flex items-center gap-2 text-sm md:text-base">
                             <Type size={16} className="text-indigo-500"/> Typography
                         </h4>
                         <div className="space-y-2">
-                            <p className="text-xs text-slate-500 mb-1">Handwriting Style</p>
                             <div className="grid grid-cols-2 gap-2">
                                 {FONTS.map(font => (
                                     <button
                                     type="button"
                                     key={font.value}
                                     onClick={() => updateFont(font.value)}
-                                    className={`px-3 py-2 text-sm border rounded-lg hover:shadow-sm transition-all text-left ${plannerData.font === font.value ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold' : 'border-slate-200 text-slate-600'}`}
+                                    className={`px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm border rounded-lg hover:shadow-sm transition-all text-left ${plannerData.font === font.value ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold' : 'border-slate-200 text-slate-600'}`}
                                     style={{ fontFamily: font.value }}
                                     >
                                     {font.name}
@@ -734,7 +802,7 @@ const App: React.FC = () => {
 
                         {/* Country Holiday Settings */}
                         <div>
-                        <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <h4 className="font-bold text-slate-800 mb-2 md:mb-3 flex items-center gap-2 text-sm md:text-base">
                             <Globe size={16} className="text-indigo-500"/> Public Holidays
                         </h4>
                         <div className="space-y-2">
@@ -747,16 +815,13 @@ const App: React.FC = () => {
                                 <option key={country.code} value={country.code}>{country.name}</option>
                                 ))}
                             </select>
-                            <p className="text-xs text-slate-500">
-                                Select a country to show 2026 public holidays on the calendar.
-                            </p>
                         </div>
                         </div>
 
                         {/* Daily Notes Toggle */}
                         <div>
-                        <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                        <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-bold text-slate-800 flex items-center gap-2 text-sm md:text-base">
                                 {enableDailyNotes ? <ToggleRight size={18} className="text-indigo-500"/> : <ToggleLeft size={18} className="text-slate-400"/>} 
                                 Daily Notes
                             </h4>
@@ -765,18 +830,15 @@ const App: React.FC = () => {
                                 onClick={() => setEnableDailyNotes(!enableDailyNotes)}
                                 className={`text-xs px-2 py-1 rounded-full border transition-colors ${enableDailyNotes ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}
                             >
-                                {enableDailyNotes ? 'Enabled' : 'Disabled'}
+                                {enableDailyNotes ? 'On' : 'Off'}
                             </button>
                         </div>
-                        <p className="text-xs text-slate-500">
-                            Allow typing directly in each day box. Disable this for a clean, print-only look.
-                        </p>
                         </div>
 
                         {/* Colors Settings */}
                         <div>
-                        <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                            <PaintBucket size={16} className="text-indigo-500"/> Customize Colors
+                        <h4 className="font-bold text-slate-800 mb-2 md:mb-3 flex items-center gap-2 text-sm md:text-base">
+                            <PaintBucket size={16} className="text-indigo-500"/> Colors
                         </h4>
                         
                         {/* Background Generation & Upload */}
@@ -786,17 +848,13 @@ const App: React.FC = () => {
                                     type="button"
                                     onClick={handleGenerateBackground}
                                     disabled={isGeneratingBackground}
-                                    className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-500 text-white p-3 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm font-bold disabled:opacity-70"
+                                    className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-500 text-white p-2 md:p-3 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 text-xs md:text-sm font-bold disabled:opacity-70"
                                 >
-                                    {isGeneratingBackground ? (
-                                        <>Generating...</>
-                                    ) : (
-                                        <><Wand2 size={16} /> AI Background</>
-                                    )}
+                                    {isGeneratingBackground ? "Generating..." : <><Wand2 size={14} /> AI BG</>}
                                 </button>
-                                <label className="flex-1 bg-slate-200 text-slate-700 p-3 rounded-lg shadow-sm hover:bg-slate-300 transition-all flex items-center justify-center gap-2 text-sm font-bold cursor-pointer">
+                                <label className="flex-1 bg-slate-200 text-slate-700 p-2 md:p-3 rounded-lg shadow-sm hover:bg-slate-300 transition-all flex items-center justify-center gap-2 text-xs md:text-sm font-bold cursor-pointer">
                                     <input type="file" className="hidden" accept="image/*" onChange={handleBackgroundUpload} />
-                                    <ImageIcon size={16} /> Upload Own
+                                    <ImageIcon size={14} /> Upload
                                 </label>
                             </div>
                             
@@ -813,132 +871,54 @@ const App: React.FC = () => {
 
                             <div className="space-y-3">
                                 {/* Title Color (Index 0) */}
-                                <div className="flex items-center gap-3 border rounded-lg p-2 bg-white shadow-sm hover:border-indigo-200 transition-colors">
-                                    <div className="relative w-8 h-8 rounded-full overflow-hidden border border-slate-200 shadow-inner shrink-0">
+                                <div className="flex items-center gap-3 border rounded-lg p-1.5 md:p-2 bg-white shadow-sm">
+                                    <div className="relative w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden border border-slate-200 shadow-inner shrink-0">
                                         <input 
                                             type="color" 
                                             value={plannerData.palette[0] || '#6366f1'}
                                             onChange={(e) => updatePaletteColor(0, e.target.value)}
-                                            className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer p-0 border-0"
+                                            className="absolute -top-2 -left-2 w-10 h-10 md:w-12 md:h-12 cursor-pointer p-0 border-0"
                                         />
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-slate-700">Primary / Title</p>
-                                    </div>
-                                </div>
-
-                                {/* Accent Color (Index 1) */}
-                                <div className="flex items-center gap-3 border rounded-lg p-2 bg-white shadow-sm hover:border-indigo-200 transition-colors">
-                                    <div className="relative w-8 h-8 rounded-full overflow-hidden border border-slate-200 shadow-inner shrink-0">
-                                        <input 
-                                            type="color" 
-                                            value={plannerData.palette[1] || '#818cf8'}
-                                            onChange={(e) => updatePaletteColor(1, e.target.value)}
-                                            className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer p-0 border-0"
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-slate-700">Accents / Quotes</p>
-                                    </div>
-                                </div>
-
-                                {/* Text Color (Index 3) */}
-                                <div className="flex items-center gap-3 border rounded-lg p-2 bg-white shadow-sm hover:border-indigo-200 transition-colors">
-                                    <div className="relative w-8 h-8 rounded-full overflow-hidden border border-slate-200 shadow-inner shrink-0">
-                                        <input 
-                                            type="color" 
-                                            value={plannerData.palette[3] || '#1f2937'}
-                                            onChange={(e) => updatePaletteColor(3, e.target.value)}
-                                            className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer p-0 border-0"
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-slate-700">Text & Numbers</p>
-                                    </div>
+                                    <div className="flex-1 text-xs md:text-sm font-semibold text-slate-700">Primary Title</div>
                                 </div>
 
                                 {/* Handwriting Ink Color (New) */}
-                                <div className="flex items-center gap-3 border rounded-lg p-2 bg-white shadow-sm hover:border-indigo-200 transition-colors">
-                                    <div className="relative w-8 h-8 rounded-full overflow-hidden border border-slate-200 shadow-inner shrink-0">
+                                <div className="flex items-center gap-3 border rounded-lg p-1.5 md:p-2 bg-white shadow-sm">
+                                    <div className="relative w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden border border-slate-200 shadow-inner shrink-0">
                                         <input 
                                             type="color" 
                                             value={plannerData.noteColor || '#1f2937'}
                                             onChange={(e) => updateNoteColor(e.target.value)}
-                                            className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer p-0 border-0"
+                                            className="absolute -top-2 -left-2 w-10 h-10 md:w-12 md:h-12 cursor-pointer p-0 border-0"
                                         />
                                     </div>
-                                    <div className="flex-1 flex items-center justify-between">
-                                        <p className="text-sm font-semibold text-slate-700">Handwriting Ink</p>
-                                        <PenTool size={14} className="text-slate-400" />
-                                    </div>
+                                    <div className="flex-1 text-xs md:text-sm font-semibold text-slate-700">Ink Color</div>
                                 </div>
 
                                 {/* Background Color (Index 4) */}
-                                <div className="flex items-center gap-3 border rounded-lg p-2 bg-white shadow-sm hover:border-indigo-200 transition-colors">
-                                    <div className="relative w-8 h-8 rounded-full overflow-hidden border border-slate-200 shadow-inner shrink-0">
+                                <div className="flex items-center gap-3 border rounded-lg p-1.5 md:p-2 bg-white shadow-sm">
+                                    <div className="relative w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden border border-slate-200 shadow-inner shrink-0">
                                         <input 
                                             type="color" 
                                             value={plannerData.palette[4] || '#ffffff'}
                                             onChange={(e) => updatePaletteColor(4, e.target.value)}
-                                            className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer p-0 border-0"
+                                            className="absolute -top-2 -left-2 w-10 h-10 md:w-12 md:h-12 cursor-pointer p-0 border-0"
                                         />
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-slate-700">Page Background</p>
-                                    </div>
+                                    <div className="flex-1 text-xs md:text-sm font-semibold text-slate-700">Paper Color</div>
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Theme Selector */}
-                        <div>
-                        <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                            <Palette size={16} className="text-indigo-500"/> Preset Themes
-                        </h4>
-                        <div className="space-y-3">
-                            {/* Original AI Option */}
-                            {originalAiPalette && (
-                            <button 
-                                type="button"
-                                onClick={() => applyTheme(originalAiPalette)}
-                                className={`w-full flex items-center p-2 rounded-lg border-2 transition-all bg-white hover:shadow-md ${JSON.stringify(plannerData.palette) === JSON.stringify(originalAiPalette) ? 'border-indigo-600 ring-1 ring-indigo-100' : 'border-transparent'}`}
-                            >
-                                <div className="flex gap-1 mr-3">
-                                    {originalAiPalette.slice(0, 4).map(c => (
-                                    <div key={c} className="w-4 h-4 rounded-full border border-slate-100" style={{ backgroundColor: c }} />
-                                    ))}
-                                </div>
-                                <span className="text-sm font-medium">AI Original</span>
-                            </button>
-                            )}
-
-                            {/* Presets */}
-                            {THEMES.map((theme) => (
-                            <button 
-                                type="button"
-                                key={theme.name}
-                                onClick={() => applyTheme(theme.palette)}
-                                className={`w-full flex items-center p-2 rounded-lg border-2 transition-all bg-white hover:shadow-md ${JSON.stringify(plannerData.palette) === JSON.stringify(theme.palette) ? 'border-indigo-600 ring-1 ring-indigo-100' : 'border-transparent'}`}
-                            >
-                                <div className="flex gap-1 mr-3">
-                                    {theme.palette.slice(0, 4).map(c => (
-                                    <div key={c} className="w-4 h-4 rounded-full border border-slate-100" style={{ backgroundColor: c }} />
-                                    ))}
-                                </div>
-                                <span className="text-sm font-medium">{theme.name}</span>
-                            </button>
-                            ))}
-                        </div>
                         </div>
                     </div>
                 )}
 
                 {/* Footer Action */}
-                <div className="p-4 border-t bg-white">
+                <div className="p-3 md:p-4 border-t bg-white shrink-0">
                     <button 
                         type="button"
                         onClick={clearMonthEvents}
-                        className="w-full text-sm font-bold text-red-500 hover:bg-red-50 py-3 rounded-lg transition-colors border border-red-100"
+                        className="w-full text-xs md:text-sm font-bold text-red-500 hover:bg-red-50 py-2 md:py-3 rounded-lg transition-colors border border-red-100"
                     >
                         Reset {MONTHS_2026[currentMonthIndex].name}
                     </button>
