@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Sticker } from '../types';
-import { MousePointer2, Scissors, Check, Trash2 } from 'lucide-react';
+import { MousePointer2, Scissors, Check, Trash2, ArrowRight } from 'lucide-react';
 
 interface StickerExtractorProps {
   imageSrc: string;
   onDone: (stickers: Sticker[]) => void;
   onBack: () => void;
+  isLastImage?: boolean;
 }
 
-const StickerExtractor: React.FC<StickerExtractorProps> = ({ imageSrc, onDone, onBack }) => {
+const StickerExtractor: React.FC<StickerExtractorProps> = ({ imageSrc, onDone, onBack, isLastImage = true }) => {
   const [stickers, setStickers] = useState<Sticker[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
@@ -16,6 +17,12 @@ const StickerExtractor: React.FC<StickerExtractorProps> = ({ imageSrc, onDone, o
   
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Reset stickers when image source changes (next image in queue)
+  useEffect(() => {
+    setStickers([]);
+    setCurrentRect(null);
+  }, [imageSrc]);
 
   const getRelativePos = (e: React.MouseEvent) => {
     if (!containerRef.current) return { x: 0, y: 0 };
@@ -118,12 +125,16 @@ const StickerExtractor: React.FC<StickerExtractorProps> = ({ imageSrc, onDone, o
           </button>
           <button 
             onClick={() => onDone(stickers)} 
-            disabled={stickers.length === 0}
+            // Allow finishing even with 0 stickers if they just want to skip this image
             className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold transition-all ${
-              stickers.length > 0 ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg' : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+              'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg'
             }`}
           >
-            Finish & Plan <Check size={18} />
+            {isLastImage ? (
+                <>Finish & Plan <Check size={18} /></>
+            ) : (
+                <>Next Image <ArrowRight size={18} /></>
+            )}
           </button>
         </div>
       </div>

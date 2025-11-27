@@ -18,6 +18,7 @@ interface PrintableMonthProps {
   onDeleteSticker: (day: number, stickerInstanceId: string) => void;
   onUpdateNote: (day: number, note: string) => void;
   onCommitNote: () => void;
+  holidays: Record<number, string>;
 }
 
 // Internal component for handling drag, resize, and rotate
@@ -237,7 +238,8 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
   onUpdateSticker,
   onDeleteSticker,
   onUpdateNote,
-  onCommitNote
+  onCommitNote,
+  holidays
 }) => {
   const daysArray = Array.from({ length: monthData.days }, (_, i) => i + 1);
   // Create negative IDs for empty start days so they can be interactive (e.g., -1, -2, -3...)
@@ -275,11 +277,12 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
 
   const renderDayCell = (day: number, isSpacer: boolean = false) => {
     const dayEvents = events[day] || { day, stickers: [] };
+    const holidayName = holidays[day];
 
     return (
       <div 
         key={day} 
-        ref={el => dayRefs.current[day] = el}
+        ref={(el) => { dayRefs.current[day] = el; }}
         onClick={(e) => { e.stopPropagation(); handleDayBackgroundClick(day); }}
         className={`relative border rounded-lg p-2 transition-all hover:shadow-md cursor-pointer group ${isSpacer ? 'border-dashed border-slate-200' : ''} ${selectedStickerId && !focusedStickerId ? 'hover:bg-indigo-50 hover:border-indigo-300' : ''}`}
         style={{ 
@@ -288,7 +291,17 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
         }}
       >
         {!isSpacer && (
-           <span className="font-bold text-lg select-none pointer-events-none relative z-10" style={{ color: textColor }}>{day}</span>
+           <div className="flex justify-between items-start select-none pointer-events-none relative z-10">
+              <span className="font-bold text-lg" style={{ color: textColor }}>{day}</span>
+              {holidayName && (
+                <span 
+                  className="text-[0.6rem] font-bold uppercase tracking-tight text-right leading-tight max-w-[60%]" 
+                  style={{ color: accentColor }}
+                >
+                  {holidayName}
+                </span>
+              )}
+           </div>
         )}
         
         {/* Note Area - Conditionally rendered */}

@@ -27,6 +27,7 @@ export interface PlannerData {
   font?: string;
   backgroundImage?: string;
   noteColor?: string;
+  country?: string;
 }
 
 export interface MonthData {
