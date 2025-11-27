@@ -387,12 +387,10 @@ const App: React.FC = () => {
           const bgImage = await generatePlannerBackground(plannerData.mood, plannerData.palette);
           if (bgImage) {
               setPlannerData(prev => ({ ...prev, backgroundImage: bgImage }));
-          } else {
-              alert("Could not generate background. Please try again or check your API key.");
           }
-      } catch (error) {
-          console.error("Failed to generate background");
-          alert("Error generating background. Please try again.");
+      } catch (error: any) {
+          console.error("Failed to generate background:", error);
+          alert(error.message || "Error generating background. Please try again.");
       } finally {
           setIsGeneratingBackground(false);
       }

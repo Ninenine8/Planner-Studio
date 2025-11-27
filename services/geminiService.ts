@@ -1,15 +1,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PlannerData } from "../types";
 
-const getClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please check your deployment settings or .env file.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 export const analyzeDrawings = async (base64Image: string): Promise<PlannerData> => {
-  const ai = getClient();
-  
   // Clean base64 string if it has prefix
   const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
 
   try {
+    const ai = getClient();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: {
@@ -74,17 +79,17 @@ export const analyzeDrawings = async (base64Image: string): Promise<PlannerData>
 };
 
 export const generatePlannerBackground = async (mood: string, palette: string[]): Promise<string> => {
-  const ai = getClient();
-  
-  // Create a descriptive prompt based on mood and palette
-  const prompt = `A subtle, artistic background texture or pattern for a printable planner page.
-  Style/Mood: ${mood}.
-  Color Palette: ${palette.join(', ')}.
-  The image should be light, high-key, pastel, and suitable for writing text over. 
-  Watercolor, paper texture, or gentle doodle style. Soft edges. White space in the middle.
-  Do not include text or grids.`;
-
   try {
+    const ai = getClient();
+    
+    // Create a descriptive prompt based on mood and palette
+    const prompt = `A subtle, artistic background texture or pattern for a printable planner page.
+    Style/Mood: ${mood}.
+    Color Palette: ${palette.join(', ')}.
+    The image should be light, high-key, pastel, and suitable for writing text over. 
+    Watercolor, paper texture, or gentle doodle style. Soft edges. White space in the middle.
+    Do not include text or grids.`;
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
@@ -101,9 +106,9 @@ export const generatePlannerBackground = async (mood: string, palette: string[])
         }
       }
     }
-    throw new Error("No image generated");
+    throw new Error("No image generated from API");
   } catch (error) {
-    console.error("Background generation failed:", error);
-    return "";
+    // Re-throw the error so the UI can display it
+    throw error;
   }
 };
