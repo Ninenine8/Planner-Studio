@@ -1,16 +1,60 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Image as ImageIcon, Printer, Download, Sparkles, ChevronLeft, ChevronRight, Layout, RotateCcw, Plus, Palette, Shapes, PaintBucket, Undo2, Redo2, Type, ToggleLeft, ToggleRight, Wand2, PenTool, Globe, Share2, Save, X, Layers, Smartphone } from 'lucide-react';
+import { Upload, Image as ImageIcon, Printer, Download, Sparkles, ChevronLeft, ChevronRight, Layout, RotateCw, Plus, Palette, Shapes, PaintBucket, Undo2, Redo2, Type, ToggleLeft, ToggleRight, Wand2, PenTool, Globe, Share2, Save, X, Layers, Smartphone, Smile, Quote, Shuffle } from 'lucide-react';
 import StickerExtractor from './components/StickerExtractor';
 import PrintableMonth from './components/PrintableMonth';
 import { analyzeDrawings, generatePlannerBackground } from './services/geminiService';
 import { Sticker, PlannerData, MONTHS_2026, CalendarEvent, PlacedSticker } from './types';
 import { SUPPORTED_COUNTRIES, getHolidaysForMonth } from './holidays';
 
+const QUOTES_POOL = [
+  "Creativity takes courage.",
+  "Every artist was first an amateur.",
+  "Draw your own path.",
+  "Life is the art of drawing without an eraser.",
+  "Keep going, you're growing.",
+  "Dream big, start small.",
+  "Stay wild, moon child.",
+  "Collect moments, not things.",
+  "Choose joy.",
+  "Focus on the good.",
+  "Believe you can.",
+  "Make today amazing.",
+  "Do more of what makes you happy.",
+  "Good vibes only.",
+  "Life is tough but so are you.",
+  "Stay positive.",
+  "You are enough.",
+  "Progress over perfection.",
+  "Radiate positivity.",
+  "Embrace the journey.",
+  "Stay curious.",
+  "Create your own sunshine.",
+  "Be the energy you want to attract.",
+  "Every day is a fresh start.",
+  "Turning dreams into plans.",
+  "Small steps every day.",
+  "Make it happen.",
+  "You got this.",
+  "Stars can't shine without darkness.",
+  "Grow through what you go through.",
+  "Your potential is endless.",
+  "Enjoy the little things.",
+  "Best year ever.",
+  "Simplicity is the ultimate sophistication.",
+  "Be yourself; everyone else is already taken."
+];
+
+const getRandomQuotes = () => {
+    // Simple shuffle
+    const shuffled = [...QUOTES_POOL].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 12);
+};
+
 // Mock/Default Data
 const DEFAULT_PLANNER_DATA: PlannerData = {
   palette: ["#6366f1", "#818cf8", "#c7d2fe", "#1f2937", "#f8fafc"],
-  mood: "Waiting for Art...",
-  monthlyQuotes: Array(12).fill("Your creativity goes here!"),
+  mood: "Artistic",
+  monthlyQuotes: getRandomQuotes(),
   font: "Patrick Hand",
   noteColor: "#1f2937",
   country: "NONE"
@@ -213,6 +257,12 @@ const App: React.FC = () => {
 
     } catch (e) {
       console.error(e);
+      // Alert user about specific API errors so they know why it failed
+      const msg = (e as Error).message;
+      if (msg.includes("API Key") || msg.includes("Gemini")) {
+          alert("AI Analysis Error: " + msg);
+      }
+
       // Fallback if analysis fails, still proceed
       if (isMobile) {
           const newStickers = await createStickersFromImages(processingImages);
@@ -380,22 +430,14 @@ const App: React.FC = () => {
   const updateCountry = (code: string) => {
     setPlannerData(prev => ({ ...prev, country: code }));
   }
-  
-  const handleGenerateBackground = async () => {
-      setIsGeneratingBackground(true);
-      try {
-          const bgImage = await generatePlannerBackground(plannerData.mood, plannerData.palette);
-          if (bgImage) {
-              setPlannerData(prev => ({ ...prev, backgroundImage: bgImage }));
-          }
-      } catch (error: any) {
-          console.error("Failed to generate background:", error);
-          alert(error.message || "Error generating background. Please try again.");
-      } finally {
-          setIsGeneratingBackground(false);
-      }
-  };
 
+  const handleShuffleQuotes = () => {
+      setPlannerData(prev => ({
+          ...prev,
+          monthlyQuotes: getRandomQuotes()
+      }));
+  };
+  
   const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -783,18 +825,19 @@ const App: React.FC = () => {
                 {/* Tab Content: Style */}
                 {activeTab === 'style' && (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 md:space-y-8 bg-slate-50">
-                        {/* Mood Settings */}
+                        
+                        {/* Quotes Settings */}
                         <div>
                         <h4 className="font-bold text-slate-800 mb-2 md:mb-3 flex items-center gap-2 text-sm md:text-base">
-                            <Sparkles size={16} className="text-indigo-500"/> Current Mood
+                            <Quote size={16} className="text-indigo-500"/> Motivational Quotes
                         </h4>
-                        <input 
-                            type="text" 
-                            value={plannerData.mood}
-                            onChange={(e) => setPlannerData(prev => ({ ...prev, mood: e.target.value }))}
-                            className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-200 outline-none"
-                            placeholder="e.g. Whimsical"
-                        />
+                         <button 
+                            type="button"
+                            onClick={handleShuffleQuotes}
+                            className="w-full flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-200 py-2 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium"
+                        >
+                            <Shuffle size={14} /> Shuffle Quotes
+                        </button>
                         </div>
 
                         {/* Typography Settings */}

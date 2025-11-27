@@ -251,7 +251,7 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
   // Dynamic styles based on Gemini palette
   const mainColor = plannerData.palette[0] || '#6366f1';
   const accentColor = plannerData.palette[1] || '#818cf8';
-  const bgColor = plannerData.palette[4] || '#ffffff';
+  const bgColor = plannerData.palette[4] || '#ffffff'; // The "Paper" color
   const textColor = plannerData.palette[3] || '#1f2937';
   
   // Specific note color, or fallback to text color if not set
@@ -259,6 +259,23 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
 
   // Font
   const activeFont = plannerData.font || 'Patrick Hand';
+
+  // STRONG Text Halo for visibility on background images
+  // Uses the "Paper" color (bgColor) as the stroke/glow color.
+  const textHaloColor = bgColor;
+  const textHaloStyle: React.CSSProperties = {
+    textShadow: `
+      2px 0 0 ${textHaloColor}, 
+      -2px 0 0 ${textHaloColor}, 
+      0 2px 0 ${textHaloColor}, 
+      0 -2px 0 ${textHaloColor}, 
+      1px 1px 0 ${textHaloColor}, 
+      -1px -1px 0 ${textHaloColor}, 
+      1px -1px 0 ${textHaloColor}, 
+      -1px 1px 0 ${textHaloColor},
+      0 0 5px ${textHaloColor}
+    `
+  };
 
   // Handle clicking the background of a day
   const handleDayBackgroundClick = (day: number) => {
@@ -286,17 +303,18 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
         onClick={(e) => { e.stopPropagation(); handleDayBackgroundClick(day); }}
         className={`relative border rounded-lg p-2 transition-all hover:shadow-md cursor-pointer group ${isSpacer ? 'border-dashed border-slate-200' : ''} ${selectedStickerId && !focusedStickerId ? 'hover:bg-indigo-50 hover:border-indigo-300' : ''}`}
         style={{ 
-          borderColor: isSpacer ? undefined : `${mainColor}40`, 
-          backgroundColor: isSpacer ? 'transparent' : 'rgba(255,255,255,0.4)' 
+          borderColor: isSpacer ? undefined : `${mainColor}60`, 
+          // Increase opacity for readability against bg images
+          backgroundColor: isSpacer ? 'transparent' : 'rgba(255,255,255,0.75)' 
         }}
       >
         {!isSpacer && (
            <div className="flex justify-between items-start select-none pointer-events-none relative z-10">
-              <span className="font-bold text-lg" style={{ color: textColor }}>{day}</span>
+              <span className="font-bold text-lg leading-none" style={{ color: textColor, ...textHaloStyle }}>{day}</span>
               {holidayName && (
                 <span 
                   className="text-[0.6rem] font-bold uppercase tracking-tight text-right leading-tight max-w-[60%]" 
-                  style={{ color: accentColor }}
+                  style={{ color: accentColor, ...textHaloStyle }}
                 >
                   {holidayName}
                 </span>
@@ -312,8 +330,13 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
             onBlur={onCommitNote}
             onClick={(e) => e.stopPropagation()} 
             placeholder={selectedStickerId ? "" : "..."}
-            className={`absolute inset-0 w-full h-full bg-transparent resize-none outline-none text-sm p-2 pt-8 placeholder:text-slate-400/30 focus:bg-white/60 focus:ring-2 focus:ring-inset focus:ring-indigo-100/50 transition-colors ${selectedStickerId ? 'pointer-events-none' : 'cursor-text'}`}
-            style={{ color: noteColor, fontFamily: activeFont }}
+            className={`absolute inset-0 w-full h-full bg-transparent resize-none outline-none text-sm p-2 pt-8 placeholder:text-slate-400/50 focus:bg-white/90 focus:ring-2 focus:ring-inset focus:ring-indigo-100/50 transition-colors ${selectedStickerId ? 'pointer-events-none' : 'cursor-text'}`}
+            style={{ 
+                color: noteColor, 
+                fontFamily: activeFont,
+                // Faint shadow for handwritten notes too
+                textShadow: '0 0 2px white' 
+            }}
           />
         )}
 
@@ -361,27 +384,29 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
     >
       {/* Generated Background Image Layer */}
       {plannerData.backgroundImage && (
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-50">
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-100">
           <img 
             src={plannerData.backgroundImage} 
             alt="Background" 
             className="w-full h-full object-cover"
           />
+          {/* Subtle overlay to ensure some base readability if image is chaotic */}
+          <div className="absolute inset-0 bg-white/30" />
         </div>
       )}
 
       {/* Header */}
       <div className="flex justify-between items-end mb-6 border-b-4 pb-4 relative z-10" style={{ borderColor: mainColor }}>
         <div>
-           <h2 className="text-6xl font-bold" style={{ color: mainColor, fontFamily: activeFont }}>
+           <h2 className="text-6xl font-bold leading-tight" style={{ color: mainColor, fontFamily: activeFont, ...textHaloStyle }}>
             {monthData.name}
           </h2>
-          <p className="text-xl opacity-75 font-semibold mt-2" style={{ color: textColor }}>
+          <p className="text-xl opacity-90 font-semibold mt-2" style={{ color: textColor, ...textHaloStyle }}>
             2026
           </p>
         </div>
         <div className="max-w-md text-right">
-          <p className="text-2xl italic" style={{ color: accentColor, fontFamily: activeFont }}>
+          <p className="text-2xl italic leading-snug" style={{ color: accentColor, fontFamily: activeFont, ...textHaloStyle }}>
             "{plannerData.monthlyQuotes[monthIndex]}"
           </p>
         </div>
@@ -390,7 +415,7 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
       {/* Grid */}
       <div className="flex-1 grid grid-cols-7 gap-2 relative z-10">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} className="text-center font-bold uppercase tracking-wider text-sm mb-2" style={{ color: textColor }}>
+          <div key={d} className="text-center font-bold uppercase tracking-wider text-sm mb-2" style={{ color: textColor, ...textHaloStyle }}>
             {d}
           </div>
         ))}
@@ -404,12 +429,12 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
       
       {/* Footer / Notes Area */}
       <div className="mt-6 pt-4 border-t border-dashed relative z-10" style={{ borderColor: mainColor }}>
-         <p className="text-sm font-bold uppercase tracking-widest mb-1" style={{ color: accentColor }}>Notes</p>
-         <div className="h-16 w-full rounded bg-white/30 border border-transparent hover:border-slate-200 transition-colors focus-within:bg-white/50 focus-within:border-indigo-200 focus-within:shadow-sm">
+         <p className="text-sm font-bold uppercase tracking-widest mb-1" style={{ color: accentColor, ...textHaloStyle }}>Notes</p>
+         <div className="h-16 w-full rounded bg-white/60 border border-transparent hover:border-slate-200 transition-colors focus-within:bg-white/80 focus-within:border-indigo-200 focus-within:shadow-sm">
            <textarea 
              className="w-full h-full bg-transparent resize-none outline-none text-lg p-2"
              placeholder="Monthly goals, reminders, or doodles..."
-             style={{ color: noteColor, fontFamily: activeFont }}
+             style={{ color: noteColor, fontFamily: activeFont, textShadow: '0 0 2px white' }}
              value={monthlyNote || ''}
              onChange={(e) => onUpdateMonthlyNote(e.target.value)}
              onBlur={onCommitMonthlyNote}
