@@ -245,6 +245,10 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
   // Create negative IDs for empty start days so they can be interactive (e.g., -1, -2, -3...)
   const emptyStartDays = Array.from({ length: monthData.startDay }, (_, i) => -(i + 1));
   
+  // Calculate Grid Density
+  const totalSlots = monthData.startDay + monthData.days;
+  const numRows = Math.ceil(totalSlots / 7);
+
   const [focusedStickerId, setFocusedStickerId] = useState<string | null>(null);
   const dayRefs = useRef<Record<number, HTMLDivElement | null>>({});
   
@@ -330,7 +334,7 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
             onBlur={onCommitNote}
             onClick={(e) => e.stopPropagation()} 
             placeholder={selectedStickerId ? "" : "..."}
-            className={`absolute inset-0 w-full h-full bg-transparent resize-none outline-none text-sm p-2 pt-8 placeholder:text-slate-400/50 focus:bg-white/90 focus:ring-2 focus:ring-inset focus:ring-indigo-100/50 transition-colors ${selectedStickerId ? 'pointer-events-none' : 'cursor-text'}`}
+            className={`absolute inset-0 w-full h-full bg-transparent resize-none outline-none text-sm p-2 pt-8 placeholder:text-slate-400/50 focus:bg-white/90 focus:ring-2 focus:ring-inset focus:ring-indigo-100/50 transition-colors overflow-hidden ${selectedStickerId ? 'pointer-events-none' : 'cursor-text'}`}
             style={{ 
                 color: noteColor, 
                 fontFamily: activeFont,
@@ -378,7 +382,7 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
 
   return (
     <div 
-      className="printable-page bg-white w-full h-full p-8 flex flex-col relative overflow-hidden"
+      className={`printable-page bg-white w-full h-full flex flex-col relative overflow-hidden p-6`}
       style={{ backgroundColor: bgColor }}
       onClick={() => setFocusedStickerId(null)} // Click outside days clears focus
     >
@@ -396,9 +400,12 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-end mb-6 border-b-4 pb-4 relative z-10" style={{ borderColor: mainColor }}>
+      <div 
+        className={`flex justify-between items-end border-b-4 relative z-10 transition-all mb-4 pb-2`} 
+        style={{ borderColor: mainColor }}
+      >
         <div>
-           <h2 className="text-6xl font-bold leading-tight" style={{ color: mainColor, fontFamily: activeFont, ...textHaloStyle }}>
+           <h2 className={`font-bold leading-tight text-6xl`} style={{ color: mainColor, fontFamily: activeFont, ...textHaloStyle }}>
             {monthData.name}
           </h2>
           <p className="text-xl opacity-90 font-semibold mt-2" style={{ color: textColor, ...textHaloStyle }}>
@@ -412,14 +419,20 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="flex-1 grid grid-cols-7 gap-2 relative z-10">
+      {/* Weekday Headers - OUTSIDE GRID */}
+      <div className="grid grid-cols-7 gap-1 mb-1 relative z-10">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} className="text-center font-bold uppercase tracking-wider text-sm mb-2" style={{ color: textColor, ...textHaloStyle }}>
+          <div key={d} className="text-center font-bold uppercase tracking-wider text-sm flex items-end justify-center pb-1" style={{ color: textColor, ...textHaloStyle }}>
             {d}
           </div>
         ))}
+      </div>
 
+      {/* Grid - Only Days */}
+      <div 
+        className={`flex-1 grid grid-cols-7 relative z-10 min-h-0 gap-1`}
+        style={{ gridTemplateRows: `repeat(${numRows}, 1fr)` }} // Uniform Rows
+      >
         {/* Spacer Days (Empty slots at start) - Now Interactive */}
         {emptyStartDays.map(d => renderDayCell(d, true))}
 
@@ -428,9 +441,12 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
       </div>
       
       {/* Footer / Notes Area */}
-      <div className="mt-6 pt-4 border-t border-dashed relative z-10" style={{ borderColor: mainColor }}>
+      <div 
+        className={`border-t border-dashed relative z-10 transition-all mt-4 pt-2`} 
+        style={{ borderColor: mainColor }}
+      >
          <p className="text-sm font-bold uppercase tracking-widest mb-1" style={{ color: accentColor, ...textHaloStyle }}>Notes</p>
-         <div className="h-16 w-full rounded bg-white/60 border border-transparent hover:border-slate-200 transition-colors focus-within:bg-white/80 focus-within:border-indigo-200 focus-within:shadow-sm">
+         <div className={`w-full rounded bg-white/60 border border-transparent hover:border-slate-200 transition-colors focus-within:bg-white/80 focus-within:border-indigo-200 focus-within:shadow-sm h-14`}>
            <textarea 
              className="w-full h-full bg-transparent resize-none outline-none text-lg p-2"
              placeholder="Monthly goals, reminders, or doodles..."
