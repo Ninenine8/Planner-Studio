@@ -372,9 +372,12 @@ const App: React.FC = () => {
           const bgImage = await generatePlannerBackground(plannerData.mood, plannerData.palette);
           if (bgImage) {
               setPlannerData(prev => ({ ...prev, backgroundImage: bgImage }));
+          } else {
+              alert("Could not generate background. Please try again or check your API key.");
           }
       } catch (error) {
           console.error("Failed to generate background");
+          alert("Error generating background. Please try again.");
       } finally {
           setIsGeneratingBackground(false);
       }
@@ -419,11 +422,12 @@ const App: React.FC = () => {
   };
 
   const handlePrint = () => {
+    // Simply print - let CSS Media queries handle the view
+    // Fallback to manual print if strict mode blocks it? No, usually works.
     try {
         window.print();
     } catch (e) {
-        console.error("Print failed", e);
-        alert("Print failed. Please try using your browser's Print option in the menu.");
+        alert("Print command blocked by browser. Please use your browser's Print menu.");
     }
   };
 
