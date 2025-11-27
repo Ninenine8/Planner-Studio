@@ -34,6 +34,21 @@ const FONTS = [
   { name: "Elegant", value: "Dancing Script" },
 ];
 
+// Helper to load html2canvas dynamically if missing
+const loadHtml2Canvas = (): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    if ((window as any).html2canvas) {
+      resolve((window as any).html2canvas);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+    script.onload = () => resolve((window as any).html2canvas);
+    script.onerror = () => reject(new Error("Failed to load html2canvas"));
+    document.head.appendChild(script);
+  });
+};
+
 const App: React.FC = () => {
   // State Machine
   const [step, setStep] = useState<'upload' | 'extract' | 'plan'>('upload');
@@ -400,25 +415,27 @@ const App: React.FC = () => {
   // --- Export / Print Handlers ---
 
   const getCanvas = async () => {
-    // @ts-ignore
-    if (!window.html2canvas) {
-        alert("Image generation library not loaded. Please try refreshing.");
+    try {
+        const html2canvas = await loadHtml2Canvas();
+        
+        // Capture the visible month container
+        const element = document.querySelector('.printable-page') as HTMLElement;
+        if (!element) return null;
+
+        // Deselect sticker before capture
+        setSelectedStickerId(null);
+        
+        return await html2canvas(element, { 
+            scale: 2, // High res for printing/viewing
+            useCORS: true,
+            backgroundColor: plannerData.palette[4] || '#ffffff',
+            logging: false
+        });
+    } catch (e) {
+        console.error(e);
+        alert("Image generation library failed to load. Please check your internet connection.");
         return null;
     }
-    // Capture the visible month container
-    const element = document.querySelector('.printable-page') as HTMLElement;
-    if (!element) return null;
-
-    // Deselect sticker before capture
-    setSelectedStickerId(null);
-    
-    // @ts-ignore
-    return await window.html2canvas(element, { 
-        scale: 2, // High res for printing/viewing
-        useCORS: true,
-        backgroundColor: plannerData.palette[4] || '#ffffff',
-        logging: false
-    });
   };
 
   const handlePrint = () => {
