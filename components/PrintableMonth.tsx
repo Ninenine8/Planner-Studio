@@ -265,7 +265,6 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
   const activeFont = plannerData.font || 'Patrick Hand';
 
   // STRONG Text Halo for visibility on background images
-  // Uses the "Paper" color (bgColor) as the stroke/glow color.
   const textHaloColor = bgColor;
   const textHaloStyle: React.CSSProperties = {
     textShadow: `
@@ -305,11 +304,11 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
         key={day} 
         ref={(el) => { dayRefs.current[day] = el; }}
         onClick={(e) => { e.stopPropagation(); handleDayBackgroundClick(day); }}
-        className={`relative border rounded-lg p-2 transition-all hover:shadow-md cursor-pointer group ${isSpacer ? 'border-dashed border-slate-200' : ''} ${selectedStickerId && !focusedStickerId ? 'hover:bg-indigo-50 hover:border-indigo-300' : ''}`}
+        className={`relative border rounded-lg p-2 transition-all hover:shadow-md cursor-pointer group ${selectedStickerId && !focusedStickerId ? 'hover:bg-indigo-50 hover:border-indigo-300' : ''}`}
         style={{ 
-          borderColor: isSpacer ? undefined : `${mainColor}60`, 
-          // Increase opacity for readability against bg images
-          backgroundColor: isSpacer ? 'transparent' : 'rgba(255,255,255,0.75)' 
+          borderColor: `${mainColor}60`, 
+          // Uniform background opacity
+          backgroundColor: 'rgba(255,255,255,0.75)' 
         }}
       >
         {!isSpacer && (
@@ -433,7 +432,7 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
         className={`flex-1 grid grid-cols-7 relative z-10 min-h-0 gap-1`}
         style={{ gridTemplateRows: `repeat(${numRows}, 1fr)` }} // Uniform Rows
       >
-        {/* Spacer Days (Empty slots at start) - Now Interactive */}
+        {/* Spacer Days (Empty slots at start) - Now Interactive but Visual Uniformity */}
         {emptyStartDays.map(d => renderDayCell(d, true))}
 
         {/* Actual Days */}

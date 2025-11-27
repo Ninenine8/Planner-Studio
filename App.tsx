@@ -126,6 +126,9 @@ const App: React.FC = () => {
   const [isProcessingDownload, setIsProcessingDownload] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Refs
+  const printRef = useRef<HTMLDivElement>(null);
+
   // Derived State
   const currentMonthHolidays = getHolidaysForMonth(plannerData.country, currentMonthIndex);
 
@@ -458,19 +461,50 @@ const App: React.FC = () => {
     try {
         const html2canvas = await loadHtml2Canvas();
         
-        // Capture the visible month container
-        const element = document.querySelector('.printable-page') as HTMLElement;
-        if (!element) return null;
+        // Use the dedicated print container which is fixed A4 size
+        const element = printRef.current;
+        if (!element) {
+            console.error("Print reference not found");
+            return null;
+        }
 
+        // We must temporarily make it visible for html2canvas to capture it
+        const originalDisplay = element.style.display;
+        element.style.display = 'block';
+        element.style.position = 'fixed';
+        element.style.top = '-9999px';
+        element.style.left = '-9999px';
+        
         // Deselect sticker before capture
         setSelectedStickerId(null);
         
-        return await html2canvas(element, { 
-            scale: 2, // High res for printing/viewing
-            useCORS: true,
-            backgroundColor: plannerData.palette[4] || '#ffffff',
-            logging: false
-        });
+        try {
+            const canvas = await html2canvas(element, { 
+                scale: 2, // High res for printing/viewing
+                useCORS: true,
+                backgroundColor: plannerData.palette[4] || '#ffffff',
+                logging: false,
+                windowWidth: 1200, // Simulate desktop width
+                // Explicitly set A4 px dimensions at ~96DPI for consistency
+                width: 1123, 
+                height: 794 
+            });
+            
+            // Restore original style
+            element.style.display = originalDisplay;
+            element.style.position = '';
+            element.style.top = '';
+            element.style.left = '';
+            
+            return canvas;
+        } catch (err) {
+            // Restore original style in case of error
+            element.style.display = originalDisplay;
+            element.style.position = '';
+            element.style.top = '';
+            element.style.left = '';
+            throw err;
+        }
     } catch (e) {
         console.error(e);
         alert("Image generation library failed to load. Please check your internet connection.");
@@ -1006,25 +1040,28 @@ const App: React.FC = () => {
 
         {/* === DEDICATED PRINT VIEW === */}
         {/* This div only shows up when printing due to @media print CSS rules in index.html */}
-        <div className="print-only">
-            <PrintableMonth 
-                monthIndex={currentMonthIndex}
-                monthData={MONTHS_2026[currentMonthIndex]}
-                plannerData={plannerData}
-                events={events[currentMonthIndex.toString()] || {}}
-                stickers={stickers}
-                monthlyNote={monthlyNotes[currentMonthIndex]}
-                enableDailyNotes={enableDailyNotes}
-                onUpdateMonthlyNote={() => {}} // Read only in print view
-                onCommitMonthlyNote={() => {}}
-                onDayClick={() => {}} // No interaction
-                selectedStickerId={null} // Ensure no selection UI/borders
-                onUpdateSticker={() => {}}
-                onDeleteSticker={() => {}}
-                onUpdateNote={() => {}}
-                onCommitNote={() => {}}
-                holidays={currentMonthHolidays}
-            />
+        <div className="print-only" ref={printRef}>
+            {/* Wrap in A4 dimensions to guarantee layout */}
+            <div style={{ width: '297mm', height: '210mm', backgroundColor: 'white' }}>
+                <PrintableMonth 
+                    monthIndex={currentMonthIndex}
+                    monthData={MONTHS_2026[currentMonthIndex]}
+                    plannerData={plannerData}
+                    events={events[currentMonthIndex.toString()] || {}}
+                    stickers={stickers}
+                    monthlyNote={monthlyNotes[currentMonthIndex]}
+                    enableDailyNotes={enableDailyNotes}
+                    onUpdateMonthlyNote={() => {}} // Read only in print view
+                    onCommitMonthlyNote={() => {}}
+                    onDayClick={() => {}} // No interaction
+                    selectedStickerId={null} // Ensure no selection UI/borders
+                    onUpdateSticker={() => {}}
+                    onDeleteSticker={() => {}}
+                    onUpdateNote={() => {}}
+                    onCommitNote={() => {}}
+                    holidays={currentMonthHolidays}
+                />
+            </div>
         </div>
     </>
   );
