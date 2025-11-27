@@ -854,26 +854,41 @@ const App: React.FC = () => {
                         </div>
                         </div>
 
+                        {/* Color Themes Presets */}
+                        <div>
+                        <h4 className="font-bold text-slate-800 mb-2 md:mb-3 flex items-center gap-2 text-sm md:text-base">
+                            <Layout size={16} className="text-indigo-500"/> Color Themes
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                            {THEMES.map((theme) => (
+                                <button
+                                    key={theme.name}
+                                    onClick={() => applyTheme(theme.palette)}
+                                    className="flex items-center gap-2 p-2 border rounded-lg hover:shadow-sm hover:border-indigo-300 transition-all text-left"
+                                >
+                                    <div className="flex -space-x-1">
+                                        {theme.palette.slice(0, 3).map((c, i) => (
+                                            <div key={i} className="w-3 h-3 rounded-full" style={{ backgroundColor: c }} />
+                                        ))}
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-700">{theme.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                        </div>
+
                         {/* Colors Settings */}
                         <div>
                         <h4 className="font-bold text-slate-800 mb-2 md:mb-3 flex items-center gap-2 text-sm md:text-base">
                             <PaintBucket size={16} className="text-indigo-500"/> Colors
                         </h4>
                         
-                        {/* Background Generation & Upload */}
+                        {/* Background Upload */}
                         <div className="mb-4 space-y-2">
                             <div className="flex gap-2">
-                                <button 
-                                    type="button"
-                                    onClick={handleGenerateBackground}
-                                    disabled={isGeneratingBackground}
-                                    className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-500 text-white p-2 md:p-3 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 text-xs md:text-sm font-bold disabled:opacity-70"
-                                >
-                                    {isGeneratingBackground ? "Generating..." : <><Wand2 size={14} /> AI BG</>}
-                                </button>
                                 <label className="flex-1 bg-slate-200 text-slate-700 p-2 md:p-3 rounded-lg shadow-sm hover:bg-slate-300 transition-all flex items-center justify-center gap-2 text-xs md:text-sm font-bold cursor-pointer">
                                     <input type="file" className="hidden" accept="image/*" onChange={handleBackgroundUpload} />
-                                    <ImageIcon size={14} /> Upload
+                                    <ImageIcon size={14} /> Upload Custom Background
                                 </label>
                             </div>
                             
