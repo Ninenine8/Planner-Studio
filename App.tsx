@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Image as ImageIcon, Printer, Download, Sparkles, ChevronLeft, ChevronRight, Layout, RotateCcw, Plus, Palette, Shapes, PaintBucket, Undo2, Redo2, Type, ToggleLeft, ToggleRight, Wand2 } from 'lucide-react';
+import { Upload, Image as ImageIcon, Printer, Download, Sparkles, ChevronLeft, ChevronRight, Layout, RotateCcw, Plus, Palette, Shapes, PaintBucket, Undo2, Redo2, Type, ToggleLeft, ToggleRight, Wand2, PenTool } from 'lucide-react';
 import StickerExtractor from './components/StickerExtractor';
 import PrintableMonth from './components/PrintableMonth';
 import { analyzeDrawings, generatePlannerBackground } from './services/geminiService';
@@ -10,7 +10,8 @@ const DEFAULT_PLANNER_DATA: PlannerData = {
   palette: ["#6366f1", "#818cf8", "#c7d2fe", "#1f2937", "#f8fafc"],
   mood: "Waiting for Art...",
   monthlyQuotes: Array(12).fill("Your creativity goes here!"),
-  font: "Patrick Hand"
+  font: "Patrick Hand",
+  noteColor: "#1f2937"
 };
 
 const THEMES = [
@@ -127,7 +128,8 @@ const App: React.FC = () => {
       const data = await analyzeDrawings(uploadedImage);
       setPlannerData(prev => ({
           ...data,
-          font: prev.font // Preserve existing font if set
+          font: prev.font, // Preserve existing font if set
+          noteColor: prev.noteColor || data.palette[3] // Default note color to text color
       }));
       setOriginalAiPalette(data.palette);
     } catch (e) {
@@ -260,7 +262,8 @@ const App: React.FC = () => {
   }
 
   const applyTheme = (palette: string[]) => {
-    setPlannerData(prev => ({ ...prev, palette }));
+    // Also reset note color to the text color of the theme (index 3)
+    setPlannerData(prev => ({ ...prev, palette, noteColor: palette[3] }));
   };
 
   const updatePaletteColor = (index: number, color: string) => {
@@ -273,6 +276,10 @@ const App: React.FC = () => {
          newPalette[index] = color;
          return { ...prev, palette: newPalette };
      });
+  };
+
+  const updateNoteColor = (color: string) => {
+    setPlannerData(prev => ({ ...prev, noteColor: color }));
   };
 
   const updateFont = (font: string) => {
@@ -306,7 +313,7 @@ const App: React.FC = () => {
             </div>
             <h1 className="text-4xl font-bold text-slate-900 mb-4 handwritten">DoodlePlanner 2026</h1>
             <p className="text-lg text-slate-600 mb-8">
-              Transform your sketchbook into a personalized 2026 planner. <br/>
+              Transform your sketches and drawings into a personalized 2026 planner. <br/>
               Upload a photo of your drawings, and we'll help you turn them into a planner.
             </p>
 
@@ -621,6 +628,22 @@ const App: React.FC = () => {
                             </div>
                             <div className="flex-1">
                                 <p className="text-sm font-semibold text-slate-700">Text & Numbers</p>
+                            </div>
+                        </div>
+
+                        {/* Handwriting Ink Color (New) */}
+                        <div className="flex items-center gap-3 border rounded-lg p-2 bg-white shadow-sm hover:border-indigo-200 transition-colors">
+                             <div className="relative w-8 h-8 rounded-full overflow-hidden border border-slate-200 shadow-inner shrink-0">
+                                <input 
+                                    type="color" 
+                                    value={plannerData.noteColor || '#1f2937'}
+                                    onChange={(e) => updateNoteColor(e.target.value)}
+                                    className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer p-0 border-0"
+                                />
+                            </div>
+                            <div className="flex-1 flex items-center justify-between">
+                                <p className="text-sm font-semibold text-slate-700">Handwriting Ink</p>
+                                <PenTool size={14} className="text-slate-400" />
                             </div>
                         </div>
 

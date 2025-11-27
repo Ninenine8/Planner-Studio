@@ -26,6 +26,7 @@ export interface PlannerData {
   monthlyQuotes: string[];
   font?: string;
   backgroundImage?: string;
+  noteColor?: string;
 }
 
 export interface MonthData {

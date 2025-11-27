@@ -252,6 +252,9 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
   const bgColor = plannerData.palette[4] || '#ffffff';
   const textColor = plannerData.palette[3] || '#1f2937';
   
+  // Specific note color, or fallback to text color if not set
+  const noteColor = plannerData.noteColor || textColor;
+
   // Font
   const activeFont = plannerData.font || 'Patrick Hand';
 
@@ -297,7 +300,7 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
             onClick={(e) => e.stopPropagation()} 
             placeholder={selectedStickerId ? "" : "..."}
             className={`absolute inset-0 w-full h-full bg-transparent resize-none outline-none text-sm p-2 pt-8 placeholder:text-slate-400/30 focus:bg-white/60 focus:ring-2 focus:ring-inset focus:ring-indigo-100/50 transition-colors ${selectedStickerId ? 'pointer-events-none' : 'cursor-text'}`}
-            style={{ color: textColor, fontFamily: activeFont }}
+            style={{ color: noteColor, fontFamily: activeFont }}
           />
         )}
 
@@ -393,7 +396,7 @@ const PrintableMonth: React.FC<PrintableMonthProps> = ({
            <textarea 
              className="w-full h-full bg-transparent resize-none outline-none text-lg p-2"
              placeholder="Monthly goals, reminders, or doodles..."
-             style={{ color: textColor, fontFamily: activeFont }}
+             style={{ color: noteColor, fontFamily: activeFont }}
              value={monthlyNote || ''}
              onChange={(e) => onUpdateMonthlyNote(e.target.value)}
              onBlur={onCommitMonthlyNote}
